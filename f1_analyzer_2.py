@@ -15,10 +15,12 @@ class F1Analysis:
         self.results_df = pd.read_parquet(f'./data/{year}_{track}_{session}_results.parquet'.lower().replace(' ',''))
         self.laps_df = pd.read_parquet(f'./data/{year}_{track}_{session}_laps.parquet'.lower().replace(' ',''))
         self.weather_df = pd.read_parquet(f'./data/{year}_{track}_{session}_weather.parquet'.lower().replace(' ',''))
+        self.clean_results = self._clean_results()
         self.teams = self._get_teams()
         self.race_distance = self._get_race_distance()
         self.sprint_distance = math.ceil(self.race_distance * 1/3)
         self.tyre_colors = self._tyre_colors()
+        self.weather_data = self._get_weather_data()
         self.weather_plot = self._plot_weather()
         
         # self.location = self.session.session_info['Meeting']['Location']
@@ -41,8 +43,11 @@ class F1Analysis:
         # self.tyre_deg = self._calc_tyre_deg()
         # self.weather_data = self._get_weather_data()
         self.analyzed_stints = self._analyze_race_stints()
+        self.quali_analysis = self._quali_session_analysis()
+        self.quali_plots = self._plot_quali_analysis()
         self.strategies_plot = self._strategies_plot()
         self.positions_plot = self._positions_plot()
+        self.drivers_pace = self._pace_df()
         self.race_pace_plot = self._plot_pace_graphs_tool()
 
     def _get_teams(self):
@@ -107,8 +112,12 @@ class F1Analysis:
 
     def _get_valid_drivers(self):
         if self.session in ['Race', 'Sprint']:
+            if self.session == 'Sprint':
+                distance = self.sprint_distance
+            else:
+                distance = self.race_distance
             valid_drivers = []
-            laps_min = self.race_distance * .75
+            laps_min = distance * .75
             df = self.results_df
             for driver in self.drivers:
                 try:
@@ -133,8 +142,27 @@ class F1Analysis:
             if driver not in self.valid_drivers:
                 invalid_drivers.append(driver)
         return invalid_drivers
-           
 
+    def _clean_results(self):
+        if self.session in ['Race', 'Sprint']:
+            df = self.results_df.copy()
+            df['Driver'] = df['Abbreviation']
+            df['Time'] = df['Time'].dt.total_seconds()
+            df['Time'] = df['Time'].apply(F1Analysis.convert_seconds_to_m_s_ms)
+            df = df[['Position','Driver', 'TeamName', 'GridPosition','Time','Laps','Points']].reset_index(drop=True)
+        else:
+            df = self.results_df.copy()
+            df['Driver'] = df['Abbreviation']
+            df['Driver'] = df['Abbreviation']
+            df['Time'] = df['Time'].dt.total_seconds()
+            df['Time'] = df['Time'].apply(F1Analysis.convert_seconds_to_m_s_ms)
+            for q in ['Q1','Q2','Q3']:
+                df[q] = df[q].dt.total_seconds()
+                df[q] = df[q].apply(F1Analysis.convert_seconds_to_m_s_ms)
+            df = df[['Position','Driver', 'TeamName','Q1','Q2','Q3','Laps']].reset_index(drop=True)
+
+        return df
+        
     def _analyze_race_stints(self):
         if self.session not in ['Race', 'Sprint']: 
             return None
@@ -274,7 +302,6 @@ class F1Analysis:
             ))
 
         fig.update_layout(
-            title=f'{self.year} {self.track} {self.session} Strategies',
             template='plotly_dark',
             width=1200, height=680,
             barmode='stack',
@@ -294,60 +321,212 @@ class F1Analysis:
         results_df = self.results_df
 
         for df in self.analyzed_stints:
-            driver = df['Driver'].iloc[0]
-            grid_pos = results_df.loc[results_df['Abbreviation'] == driver]['GridPosition'].item()
-            if grid_pos in [0, 0.0]:
-                grid_pos = None
-            df_2 = df.iloc[0:1].copy()
-            df_2['LapNumber'] = 0
-            df_2['Position'] = grid_pos
+            try:
+                driver = df['Driver'].iloc[0]
+                grid_pos = results_df.loc[results_df['Abbreviation'] == driver]['GridPosition'].item()
+                if grid_pos in [0, 0.0]:
+                    grid_pos = None
+                df_2 = df.iloc[0:1].copy()
+                df_2['LapNumber'] = 0
+                df_2['Position'] = grid_pos
 
-            template = [(
-                f'{df_2['Driver'].iloc[0]}<br>'
-                f'Grid Pos {df_2['Position'].iloc[0]}'
-            )]
+                template = [(
+                    f'{df_2['Driver'].iloc[0]}<br>'
+                    f'Grid Pos {df_2['Position'].iloc[0]}'
+                )]
 
-            for lap, position, time, tyre, age in zip(df['LapNumber'], df['Position'], df['LapTimeFc'], df['Compound'], df['TyreLife']):
-                try:
-                    age = int(age)
-                except:
-                    pass
+                for lap, position, time, tyre, age in zip(df['LapNumber'], df['Position'], df['LapTimeFc'], df['Compound'], df['TyreLife']):
+                    try:
+                        age = int(age)
+                    except:
+                        pass
 
-                text = (
-                    f"{df.loc[0, 'Driver']} | Lap {lap:.0f} | Pos {position:.0f}<br>"
-                    f"Time: {F1Analysis.convert_seconds_to_m_s_ms(time)}<br>" 
-                    f"Tyre: {tyre} ({(age)})"
+                    text = (
+                        f"{df.loc[0, 'Driver']} | Lap {lap:.0f} | Pos {position:.0f}<br>"
+                        f"Time: {F1Analysis.convert_seconds_to_m_s_ms(time)}<br>" 
+                        f"Tyre: {tyre} ({(age)})"
+                    )
+                    template.append(text)
+                
+                df = pd.concat([df_2, df]).reset_index().copy()
+                
+                fig.add_trace(go.Scatter(
+                    x=df['LapNumber'], y=df['Position'],
+                    name=df.loc[0, 'Driver'],
+                    hovertext=template,
+                    mode='lines+markers',
+                    marker=dict(color=df.loc[0, 'Color']),
+                    hoverinfo='text',
+            
+                ))
+
+                fig.update_layout(
+                    showlegend=True, 
+                    yaxis=dict(tickformat=','),
+                    template='plotly_dark', 
+                    margin=dict(l=5, r=5, t=30, b=40), 
+                    width=1200, height=680,
                 )
-                template.append(text)
-            
-            df = pd.concat([df_2, df]).reset_index().copy()
-            
-            fig.add_trace(go.Scatter(
-                x=df['LapNumber'], y=df['Position'],
-                name=df.loc[0, 'Driver'],
-                hovertext=template,
-                mode='lines+markers',
-                marker=dict(color=df.loc[0, 'Color']),
-                hoverinfo='text',
-        
-            ))
 
-            fig.update_layout(
-                showlegend=True, 
-                yaxis=dict(tickformat=','),
-                title=f'{self.year} {self.track} {self.session}',
-                template='plotly_dark', 
-                margin=dict(l=5, r=5, t=30, b=40), 
-                width=1200, height=680,
-            )
-
-            fig.update_yaxes(title_text='Position', range=[self.results_df['Position'].max() + .5, .5])
-            fig.update_xaxes(title_text='Lap', range=[-1, self.results_df['Laps'].max() + 1])
+                fig.update_yaxes(title_text='Position', range=[self.results_df['Position'].max() + .5, .5])
+                fig.update_xaxes(title_text='Lap', range=[-1, self.results_df['Laps'].max() + 1])
+            except:
+                continue
 
         return fig
-    
-    def _plot_weather(self):
-        def _get_weather_data(df):
+            
+
+    def _quali_session_analysis(self):
+        if self.session in ['Sprint','Race']:
+            return None
+        quali_analysis = {
+            'Q1': [],
+            'Q2': [],
+            'Q3': []
+        }
+        for session in ['Q1', 'Q2', 'Q3']:
+            qual_s = self.results_df[~self.results_df[session].isna()][['Abbreviation', session]].sort_values(by=session).reset_index(drop=True)
+            drivers = qual_s['Abbreviation'].to_list()
+            
+
+            for driver in drivers:
+                df = qual_s[qual_s['Abbreviation'] == driver].reset_index(drop=True)
+                driver_lap_time = df[session].iloc[0]
+
+                driver_laps = self.laps_df.loc[self.laps_df['Driver'] == driver]
+                driver_lap = driver_laps[driver_laps['LapTime'] == driver_lap_time].reset_index(drop=True)
+                lap_number = driver_lap['LapNumber'].iloc[0].item()
+                
+                data_df = driver_laps.loc[driver_laps['LapNumber'] == lap_number][['Driver', 'LapTime','Sector1Time','Sector2Time','Sector3Time', 'SpeedST']].reset_index(drop=True)
+
+                data_df['LapTime'] = data_df['LapTime'].dt.total_seconds()
+                data_df['Sector1Time'] = data_df['Sector1Time'].dt.total_seconds()
+                data_df['Sector2Time'] = data_df['Sector2Time'].dt.total_seconds()
+                data_df['Sector3Time'] = data_df['Sector3Time'].dt.total_seconds()
+                
+                data_df.loc[0,'Color'] = f'#{self.results_df.loc[self.results_df['Abbreviation'] == driver]['TeamColor'].item()}'
+
+                quali_analysis[session].append(data_df)
+
+        for q in ['Q1', 'Q2', 'Q3']:
+                quali_analysis[q] = pd.concat(quali_analysis[q]).reset_index(drop=True)
+            
+        return quali_analysis
+
+    def _plot_quali_analysis(self):
+        if self.session in ['Sprint','Race']:
+            return None
+
+        session_figs = {}
+        analysis_dfs = self.quali_analysis
+
+        for session in ['Q1', 'Q2', 'Q3']:
+            drivers_df = analysis_dfs[session]
+
+            fig_lap_time = make_subplots()
+            fig_speed_trap = make_subplots()
+            fig_sector_one = make_subplots()
+            fig_sector_two = make_subplots()
+            fig_sector_three = make_subplots()
+
+            figs = [fig_lap_time, fig_sector_one, fig_sector_two, fig_sector_three, fig_speed_trap]
+            values = ['LapTime', 'Sector1Time', 'Sector2Time', 'Sector3Time', 'SpeedST']
+
+            def make_text(df, value, percentage=False):
+                if percentage:
+                    percentage = '%'
+                else:
+                    percentage = ''
+                
+                text_list = []
+
+                for x in df.index:
+                    if value in ['LapTime', 'Sector1Time', 'Sector2Time', 'Sector3Time']:
+                        
+                        diff = df.loc[x, value] - df.loc[df.index[-1], value]
+                        perc = (diff / df.loc[df.index[-1], value]) * 100
+
+                        if value == 'LapTime':
+                            time = f'{F1Analysis.convert_seconds_to_m_s_ms(df.loc[x, 'LapTime'])}'
+                        else:
+                            time = f'{F1Analysis.convert_seconds_to_s_ms(df.loc[x, value])}'
+
+                        text = (
+                            f'{df.loc[x, 'Driver']} | '
+                            f'{time} | '
+                            f'{diff:.2f}{percentage} | '
+                            f'{perc:.2f}%'
+                        )
+
+                        text_list.append(text)
+                    else:
+                        val = df.loc[x, value]
+                        diff = df.loc[x, value] - df.loc[df.index[-1], value]
+                        text = (
+                            f'{df.loc[x, 'Driver']} | '
+                            f'{F1Analysis.convert_seconds_to_m_s_ms(df.loc[x, 'LapTime'])} | '
+                            f'{val:.2f}{percentage} | '
+                            f'{diff:.2f}{percentage} | '
+                        )
+
+                        text_list.append(text)
+
+                return text_list
+
+            def _plot_graphs_tool(
+                df, x_ax, y_ax, fig, text,
+                orientation='h', x_label=None, 
+                y_label=None, autoarange='reversed',
+                xaxis_range=None, yaxis_range=None
+            ):
+                
+                if not y_label:
+                    y_label = y_ax
+                if not x_label:
+                    x_label = x_ax
+
+                fig.add_trace(go.Bar(
+                    x=df[x_ax],
+                    y=df[y_ax],
+                    marker_color=df['Color'],
+                    orientation=orientation,
+                    hovertext=text,
+                    textposition='none',
+                    hoverinfo='text'
+                ))
+                
+                fig.update_layout(
+                    template='plotly_dark',
+                    width=1200, height=680,
+                    xaxis_range=xaxis_range,
+                    yaxis_range=yaxis_range,
+                )
+                
+                fig.update_yaxes(autorange=autoarange)
+
+            for value, fig in zip(values, figs):
+                if value == 'FullThrottle%':
+                    boolean = True
+                else:
+                    boolean = False
+
+                df = drivers_df.sort_values(by=value).reset_index(drop=True)
+
+                if value in ['LapTime', 'Sector1Time', 'Sector2Time', 'Sector3Time']:
+                    df = df[::-1]
+
+                text = make_text(df, value, percentage=boolean)
+                minimum = df[value].min() - (.001 * df[value].min())
+                maximum = df[value].max() + (.001 * df[value].max())
+                
+                _plot_graphs_tool(df, value, 'Driver', fig, text, autoarange=None, 
+                    xaxis_range=[minimum, maximum]
+                    )
+
+            session_figs[session] = figs
+        return session_figs
+
+    def _get_weather_data(self):
             direction_dict = {
                 'NE': list(range(24, 67 + 1)),
                 'E': list(range(68, 112 + 1)),
@@ -441,9 +620,10 @@ class F1Analysis:
             })
 
             return [weather, weather_summary]
+    
+    def _plot_weather(self):
 
-
-        df = _get_weather_data(self.weather_df)[0]
+        df = self.weather_data[0]
 
         fig = make_subplots()
 
@@ -529,10 +709,9 @@ class F1Analysis:
                 )
         return fig
 
-    def _plot_pace_graphs_tool(self):
+    def _pace_df(self):
         if self.session not in ['Race', 'Sprint']:
             return None
-        
         df = pd.concat(self.analyzed_stints)
         summarized_dfs = []
 
@@ -585,6 +764,13 @@ class F1Analysis:
         df['GapS3%'] = ((df['AvgS3'].min() - df['AvgS3']) / df['AvgS3'].min() * 100).abs().round(2)
         df['GapST%'] = ((df['AvgST'] - df['AvgST'].max()) / df['AvgST'].max() * 100).abs().round(2) 
 
+        return df
+
+    def _plot_pace_graphs_tool(self):
+        if self.session not in ['Race', 'Sprint']:
+            return None
+        df = self.drivers_pace
+
         fig = make_subplots()
         fig_fc = make_subplots()
         fig_s1 = make_subplots()
@@ -613,7 +799,6 @@ class F1Analysis:
             hoverinfo='text'
         ))
         fig.update_layout(
-            title=f'Pace Bar',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['Pace'].min() - .25 , df['Pace'].max() + .25]
@@ -646,7 +831,6 @@ class F1Analysis:
         ))
 
         fig_fc.update_layout(
-            title=f'Pace Bar Fuel Corrected',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['PaceFc'].min() - .25 , df['PaceFc'].max() + .25]
@@ -678,7 +862,6 @@ class F1Analysis:
         ))
 
         fig_s1.update_layout(
-            title=f'Pace Bar Sector 1',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['AvgS1'].min() - .25 , df['AvgS1'].max() + .25]
@@ -710,7 +893,6 @@ class F1Analysis:
         ))
 
         fig_s2.update_layout(
-            title=f'Pace Bar Sector 2',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['AvgS2'].min() - .25 , df['AvgS2'].max() + .25]
@@ -742,7 +924,6 @@ class F1Analysis:
         ))
 
         fig_s3.update_layout(
-            title=f'Pace Bar Sector 3',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['AvgS3'].min() - .25 , df['AvgS3'].max() + .25]
@@ -774,7 +955,6 @@ class F1Analysis:
         ))
 
         fig_st.update_layout(
-            title=f'Pace Bar Speed Trap',
             template='plotly_dark',
             width=1200, height=680,
             xaxis_range=[df['AvgST'].min() - .25 , df['AvgST'].max() + .25]
@@ -802,7 +982,7 @@ class F1Analysis:
 
     @staticmethod
     def convert_seconds_to_s_ms_short(total_seconds):
-        if pd.isna(total_seconds):
+        if pd.isna(total_seconds):          
             return pd.NA
         if total_seconds < 0:
             return f"{total_seconds:.2f}"
