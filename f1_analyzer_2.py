@@ -19,6 +19,7 @@ class F1Analysis:
         self.race_distance = self._get_race_distance()
         self.sprint_distance = math.ceil(self.race_distance * 1/3)
         self.tyre_colors = self._tyre_colors()
+        self.weather_plot = self._plot_weather()
         
         # self.location = self.session.session_info['Meeting']['Location']
         # self.type_2 = self.session.session_info['Type']
@@ -119,7 +120,7 @@ class F1Analysis:
         else:
             valid_drivers = []
             for driver in self.drivers:
-                if pd.isna(self.results_df[self.results_df['Abbreviation'] == driver]['Q1']):
+                if pd.isna(self.results_df[self.results_df['Abbreviation'] == driver]['Q1'].item()):
                     continue
                 else:
                     valid_drivers.append(driver)
@@ -344,6 +345,189 @@ class F1Analysis:
 
         return fig
     
+    def _plot_weather(self):
+        def _get_weather_data(df):
+            direction_dict = {
+                'NE': list(range(24, 67 + 1)),
+                'E': list(range(68, 112 + 1)),
+                'SE': list(range(113, 157 + 1)),
+                'S': list(range(158, 202 + 1)),
+                'SW': list(range(203, 247 + 1)),
+                'W': list(range(248, 292 + 1)),
+                'NW': list(range(293, 337 + 1))
+            }
+            
+            def get_direction(degrees):
+                direction = 'N'
+                for direct in list(direction_dict.keys()):
+                    if degrees in direction_dict[direct]:
+                        direction = direct
+                    else:
+                        pass
+                return direction
+            
+            if self.session in ['Race', 'Sprint']:
+                def get_lap(time):
+                    lap_number = 'No Lap'
+                    for lap in list(lap_ranges.keys()):
+                        if time in lap_ranges[lap]:
+                            lap_number = lap
+                        else:
+                            pass
+                    return lap_number
+                
+                # get the time range of each lead lap
+                
+                lead_lap = self.laps_df[['Time', 'LapTime', 'Position', 'LapNumber']]
+                lead_lap = lead_lap[lead_lap['Position'] == 1.0].sort_values(by='LapNumber').reset_index(drop=True)
+            
+                for x in ['Time', 'LapTime']:
+                    lead_lap[x] = lead_lap[x].dt.total_seconds()
+                
+                lead_lap['TimeEnd'] = lead_lap['Time'].shift(-1)
+                lead_lap.loc[lead_lap['LapNumber'] == lead_lap['LapNumber'].iloc[-1], 'TimeEnd'] = lead_lap['Time'].iloc[-1] + 120
+                
+                for x in ['Time', 'TimeEnd']:
+                    lead_lap[x] = lead_lap[x].apply(lambda x: int(x))
+                
+                lap_ranges = {}
+
+                for lap in lead_lap.index.to_list():
+                    lap_ranges[lead_lap.loc[lap, 'LapNumber']] = list(range(lead_lap.loc[lap, 'Time'], lead_lap.loc[lap, 'TimeEnd'] + 1))
+                
+                # add lap number to weather data
+
+                weather = self.weather_df
+                weather['Time'] = weather['Time'].dt.total_seconds().apply(lambda x: int(x))
+
+                weather['LapNumber'] = weather['Time'].apply(get_lap)
+
+                weather = weather[weather['LapNumber'] != 'No Lap'].drop_duplicates(subset='LapNumber').reset_index(drop=True)
+
+                weather['WindComp'] = weather['WindDirection'].apply(get_direction)
+
+                
+            else:
+                # get the time range of each lead lap
+                    
+                laps = self.laps_df
+                weather = self.weather_df
+            
+                laps['Time'] = laps['Time'].dt.total_seconds().apply(lambda x: int(x))
+
+                # add lap number to weather data
+
+                weather['Time'] = weather['Time'].dt.total_seconds().apply(lambda x: int(x))
+                weather = weather[(weather['Time'] > laps['Time'].min()) & (weather['Time'] < laps['Time'].max())].reset_index(drop=True)
+                weather['Time'] = weather['Time'].apply(lambda x: int(x / 60))
+                weather['WindComp'] = weather['WindDirection'].apply(get_direction)
+            
+            if True in weather['Rainfall'].to_list():
+                rain = 'True'
+            else:
+                rain = 'False'
+
+            weather_summary = pd.DataFrame({
+                'AirTempAvg': [f"{weather['AirTemp'].mean():.2f}℃"],
+                'TrackTempAvg': [f"{weather['TrackTemp'].mean():.2f}℃"],
+                'HumidityAvg': [f"{weather['Humidity'].mean():.2f}%"],
+                'Rain': [rain],
+                'WindSpeedAvg': [f"{weather['WindSpeed'].mean():.2f}km/h"],
+                'WindDirectionAvg': [f"{weather['WindDirection'].mean():.2f}°"],
+                'WindCompAvg': [get_direction(weather['WindDirection'].mean())],
+                'PressureAvg': [f"{weather['Pressure'].mean():.2f}"]
+
+            })
+
+            return [weather, weather_summary]
+
+
+        df = _get_weather_data(self.weather_df)[0]
+
+        fig = make_subplots()
+
+        if self.session in ['Race', 'Sprint']:
+
+            template = []
+
+            for lap, air, track, rain, hum, wind_s, wind_d, wind_c, press in zip(
+                df['LapNumber'], df['AirTemp'], df['TrackTemp'], df['Rainfall'], df['Humidity'],df['WindSpeed'], df['WindDirection'], df['WindComp'], df['Pressure']
+            ):
+
+                text = (
+                    f"<b>Lap:</b> {int(lap)} <b>Air:</b> {air}℃ <b>Track:</b> {track}℃<br>"
+                    f"<b>Wind:</b> {wind_s} km/h <b>Direction:</b> {wind_c} ({wind_d})<br>"
+                    f"<b>Humidity:</b> {hum:.1f}% <b>Rain:</b> {rain}<br>"
+                    f"<b>Pressure:</b> {press}"
+                    )
+                
+                template.append(text)
+            
+            for y in ['AirTemp', 'TrackTemp', 'WindSpeed', 'Humidity']:
+                
+                fig.add_trace(go.Scatter(
+                    x=df['LapNumber'], y=df[y],
+                    name=y,
+                    hovertext=template,
+                    mode='lines',
+                    hoverinfo='text'  
+                ))       
+
+                fig.update_layout(
+                    showlegend=True,
+                    template='plotly_dark', 
+                    margin=dict(l=5, r=5, t=30, b=40), 
+                    width=1200, height=680,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02, # Positive values push it above the plot
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
+        else:
+
+            template = []
+
+            for air, track, rain, hum, wind_s, wind_d, wind_c, press in zip(
+                df['AirTemp'], df['TrackTemp'], df['Rainfall'], df['Humidity'],df['WindSpeed'], df['WindDirection'], df['WindComp'], df['Pressure']
+            ):
+
+                text = (
+                    f"<b>Air:</b> {air}℃ <b>Track:</b> {track}℃<br>"
+                    f"<b>Wind:</b> {wind_s} km/h <b>Direction:</b> {wind_c} ({wind_d})<br>"
+                    f"<b>Humidity:</b> {hum:.1f}% <b>Rain:</b> {rain}<br>"
+                    f"<b>Pressure:</b> {press}"
+                    )
+                
+                template.append(text)
+            
+            for y in ['AirTemp', 'TrackTemp', 'WindSpeed', 'Humidity']:
+                
+                fig.add_trace(go.Scatter(
+                    x=df['Time'], y=df[y],
+                    name=y,
+                    hovertext=template,
+                    mode='lines',
+                    hoverinfo='text'  
+                ))       
+
+                fig.update_layout(
+                    showlegend=True,
+                    template='plotly_dark', 
+                    margin=dict(l=5, r=5, t=30, b=40), 
+                    width=1200, height=680,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02, # Positive values push it above the plot
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
+        return fig
+
     @staticmethod
     def convert_seconds_to_m_s_ms(total_seconds):
         if pd.isna(total_seconds):
