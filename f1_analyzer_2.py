@@ -49,6 +49,7 @@ class F1Analysis:
         self.positions_plot = self._positions_plot()
         self.drivers_pace = self._pace_df()
         self.race_pace_plot = self._plot_pace_graphs_tool()
+        self.race_plots = self._plot_race_stints()
 
     def _get_teams(self):
         df = self.results_df
@@ -429,8 +430,8 @@ class F1Analysis:
             fig_sector_two = make_subplots()
             fig_sector_three = make_subplots()
 
-            figs = [fig_lap_time, fig_sector_one, fig_sector_two, fig_sector_three, fig_speed_trap]
-            values = ['LapTime', 'Sector1Time', 'Sector2Time', 'Sector3Time', 'SpeedST']
+            figs = [fig_lap_time, fig_speed_trap, fig_sector_one, fig_sector_two, fig_sector_three]
+            values = ['LapTime', 'SpeedST', 'Sector1Time', 'Sector2Time', 'Sector3Time']
 
             def make_text(df, value, percentage=False):
                 if percentage:
@@ -962,6 +963,241 @@ class F1Analysis:
 
 
         return [fig, fig_fc, fig_s1, fig_s2, fig_s3, fig_st]
+
+    def _plot_race_stints(self):
+        if self.session not in ['Race','Sprint']:
+            return None
+
+        fig = make_subplots()
+        fig_pace = make_subplots()
+        fig_violin = make_subplots()
+        fig_fc = make_subplots()
+        fig_fc_pace = make_subplots()
+        fig_fc_violin = make_subplots()
+
+        fig_s1 = make_subplots()
+        fig_s2 = make_subplots()
+        fig_s3 = make_subplots()
+        fig_st = make_subplots()
+
+        laps = pd.concat(self.analyzed_stints).reset_index(drop=True)
+        pace = self.drivers_pace.copy()
+
+        for driver in self.drivers:
+            try:
+                driver_laps = laps.loc[laps['Driver'] == driver].reset_index(drop=True)
+                driver_pace = pace.loc[pace['Driver'] == driver].reset_index(drop=True)
+                driver_name = driver
+
+                template = []
+
+                for laptime, timed_lap_time in zip(['LapTime', 'LapTimeFc'],['TimedLapTime','TimedLapTimeFc']):
+
+                    for x in driver_laps.index:
+                        try:
+                            lap = int(driver_laps.loc[x, 'LapNumber'])
+                            age = int(driver_laps.loc[x, 'TyreLife'])
+                        except:
+                            lap = driver_laps.loc[x, 'LapNumber']
+                            age = driver_laps.loc[x, 'TyreLife']
+
+                        text = (
+                            f"{driver_laps.loc[0, 'Driver']} | Lap {lap}<br>"
+                            f"Time: {F1Analysis.convert_seconds_to_m_s_ms(driver_laps.loc[x, laptime])}<br>"
+                            f"Tyre: {driver_laps.loc[x, 'Compound'][0]} ({(age)})"
+                        )
+                        template.append(text)
+                    if laptime == 'LapTime':   
+                        fig.add_trace(go.Scatter(
+                            x=driver_laps['LapNumber'], y=driver_laps[laptime],
+                            name=driver_name,
+                            hovertext=template,
+                            mode='lines+markers',
+                            marker=dict(color=driver_pace['Color'].item()),
+                            line=dict(
+                                color=driver_pace['Color'].item(),
+                                dash=self.driver_line_type[driver]
+                            ),
+                            hoverinfo='text'  
+                        ))       
+
+                        fig.update_layout(
+                            showlegend=True,
+                            legend=dict(orientation='h'),
+                            yaxis=dict(tickformat='.1f'),
+                            template='plotly_dark', 
+                            margin=dict(l=5, r=5, t=30, b=40), 
+                            width=1200, height=680, 
+                        )
+
+                        driver_name_v = (
+                            f'{driver}<br>'
+                            f'+{driver_pace['GapS'].item():.2f}<br>'
+                            f'{driver_pace['Strat'].item()}'
+                        )
+
+                        fig_violin.add_trace(go.Violin(
+                            y=driver_laps[timed_lap_time],
+                            name=driver_name_v,
+                            box_visible=True,
+                            meanline_visible=True,
+                            opacity=0.6,
+                            fillcolor=driver_pace['Color'].item(),
+                            line_color='white',
+                        ))
+
+                        fig_violin.update_layout(
+                            showlegend=False, 
+                            yaxis=dict(tickformat='.2f'),
+                            xaxis=dict(tickformat=','),
+                            template='plotly_dark',  
+                            margin=dict(l=5, r=5, t=30, b=40), 
+                            width=1200, height=680, 
+                        )
+                    else:
+                        fig_fc.add_trace(go.Scatter(
+                            x=driver_laps['LapNumber'], y=driver_laps[laptime],
+                            name=driver_name,
+                            hovertext=template,
+                            mode='lines+markers',
+                            marker=dict(color=driver_pace['Color'].item()),
+                            line=dict(
+                                color=driver_pace['Color'].item(),
+                                dash=self.driver_line_type[driver]
+                            ),
+                            hoverinfo='text'  
+                        ))       
+
+                        fig_fc.update_layout(
+                            showlegend=True,
+                            legend=dict(orientation='h'),
+                            yaxis=dict(tickformat='.1f'),
+                            template='plotly_dark', 
+                            margin=dict(l=5, r=5, t=30, b=40), 
+                            width=1200, height=680, 
+                        )
+                        driver_name_v = (
+                            f'{driver}<br>'
+                            f'+{driver_pace['GapFcS'].item():.2f}<br>'
+                            f'{driver_pace['Strat'].item()}'
+                        )
+
+                        fig_fc_violin.add_trace(go.Violin(
+                            y=driver_laps[timed_lap_time],
+                            name=driver_name_v,
+                            box_visible=True,
+                            meanline_visible=True,
+                            opacity=0.6,
+                            fillcolor=driver_pace['Color'].item(),
+                            line_color='white',
+                        ))
+
+                        fig_fc_violin.update_layout(
+                            showlegend=False, 
+                            yaxis=dict(tickformat='.2f'),
+                            xaxis=dict(tickformat=','),
+                            template='plotly_dark',  
+                            margin=dict(l=5, r=5, t=30, b=40), 
+                            width=1200, height=680, 
+                        )
+            except:
+                continue
+
+        for fc, plot in zip(['', 'Fc'], [fig_pace, fig_fc_pace]):
+
+            df = pace.sort_values(by=f'Pace{fc}').reset_index(drop=True)   
+            label = []
+
+            for x in df.index:
+                text = (
+                    f'{df.loc[x, 'Driver']} {F1Analysis.convert_seconds_to_m_s_ms(df.loc[x, f'Pace{fc}'])}<br>'
+                    f'Strategy: {df.loc[x, 'Strat']}<br>'
+                    f'GAP: +{df.loc[x, f'Gap{fc}S']:.2f} | '
+                    f'+{df.loc[x, f'Gap{fc}%']}%'
+                    )
+                
+                label.append(text)
+
+            plot.add_trace(go.Bar(
+                x=df[f'Pace{fc}'],
+                y=df['Driver'],
+                marker_color=df['Color'],
+                orientation='h',
+                hovertext=label,
+                textposition='none',
+                hoverinfo='text'
+            ))
+
+            plot.update_layout(
+                template='plotly_dark',
+                width=1200, height=680,
+                xaxis_range=[df[f'Pace{fc}'].min() - .25 , df[f'Pace{fc}'].max() + .25]
+            )
+
+            plot.update_yaxes(autorange="reversed")
+
+        for s, plot in zip(['S1', 'S2', 'S3'], [fig_s1, fig_s2, fig_s3]):
+            df = pace.sort_values(by=f'Avg{s}').reset_index(drop=True)   
+            label = []
+
+            for x in df.index:
+                text = (
+                    f'{df.loc[x, 'Driver']} {F1Analysis.convert_seconds_to_s_ms(df.loc[x, f'Avg{s}'])}<br>'
+                    f'Strategy: {df.loc[x, 'Strat']}<br>'
+                    f'GAP: +{df.loc[x, f'Gap{s}']:.2f} | '
+                    f'+{df.loc[x, f'Gap{s}%']}%'
+                    )
+                
+                label.append(text)
+
+            plot.add_trace(go.Bar(
+                x=df[f'Avg{s}'],
+                y=df['Driver'],
+                marker_color=df['Color'],
+                orientation='h',
+                hovertext=label,
+                textposition='none',
+                hoverinfo='text'
+            ))
+
+            plot.update_layout(
+                template='plotly_dark',
+                width=1200, height=680,
+                xaxis_range=[df[f'Avg{s}'].min() - .25 , df[f'Avg{s}'].max() + .25]
+            )
+
+            plot.update_yaxes(autorange="reversed")
+
+        df = pace.sort_values(by=f'AvgST').reset_index(drop=True)   
+        label = []
+
+        for x in df.index:
+            text = (
+                f'{df.loc[x, 'Driver']} {df.loc[x,'AvgST']:.2f}<br>'
+                f'Strategy: {df.loc[x, 'Strat']}<br>'
+                f'GAP: {df.loc[x, f'GapST']:.2f} | '
+                f'{df.loc[x, f'GapST%']}%'
+                )
+            
+            label.append(text)
+
+        fig_st.add_trace(go.Bar(
+            x=df[f'AvgST'],
+            y=df['Driver'],
+            marker_color=df['Color'],
+            orientation='h',
+            hovertext=label,
+            textposition='none',
+            hoverinfo='text'
+        ))
+
+        fig_st.update_layout(
+            template='plotly_dark',
+            width=1200, height=680,
+            xaxis_range=[df[f'AvgST'].min() - .25 , df[f'AvgST'].max() + .25]
+        )
+
+        return [fig, fig_pace, fig_violin, fig_fc, fig_fc_pace, fig_fc_violin, fig_s1, fig_s2, fig_s3, fig_st]
 
     @staticmethod
     def convert_seconds_to_m_s_ms(total_seconds):

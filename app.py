@@ -41,7 +41,8 @@ if 'race' not in st.session_state:
     track = 'Australian Grand Prix'
     session = 'Race'
 
-year = st.sidebar.slider('Year', 2019, 2026)
+# year = st.sidebar.slider('Year', 2019, 2026)
+year = 2026
 track = st.sidebar.selectbox('Track', get_tracks(year))
 session = st.sidebar.selectbox('Session', get_sessions(year,track))
 
@@ -69,6 +70,34 @@ if 'race' in st.session_state:
 
         laps_1.plotly_chart(race.strategies_plot)
         laps_2.plotly_chart(race.positions_plot)
+
+        for fc, fc_2 in zip(['', 'Fc'], ['', ' Fuel Corrected']):
+            if fc == '':
+                plot_numbers = [0,1,2]
+            else:
+                plot_numbers = [3,4,5]
+ 
+            st.header(f'Lap Times{fc_2}', text_alignment='center')
+            st.plotly_chart(race.race_plots[plot_numbers[0]])
+
+            st.session_state[f'laps{fc}_1'], st.session_state[f'laps{fc}_2'] = st.columns(2)
+
+            st.session_state[f'laps{fc}_1'].text(f'Pace Bar{fc_2}')
+            st.session_state[f'laps{fc}_1'].plotly_chart(race.race_plots[plot_numbers[1]])
+
+            st.session_state[f'laps{fc}_2'].text(f'Pace Violin{fc_2}')
+            st.session_state[f'laps{fc}_2'].plotly_chart(race.race_plots[plot_numbers[2]])
+
+        st.header('Sector Times and Speed Trap', text_alignment='center')
+        st.text('Speed Trap')
+        st.plotly_chart(race.race_plots[-1])
+
+        st.session_state['r_sector_1'], st.session_state['r_sector_2'], st.session_state['r_sector_3'] = st.columns(3)
+
+        for s, p in zip([1,2,3], [6,7,8]):
+            st.session_state[f'r_sector_{s}'].text(f'Sector {s}')
+            st.session_state[f'r_sector_{s}'].plotly_chart(race.race_plots[p])
+
     else:
         for qs in ['Q1', 'Q2', 'Q3']:
             st.header(f'{qs} Analysis', text_alignment='center')
