@@ -2,3 +2,6 @@
 /wb.ipynb
 /__pycache__
 /ff1_data.ipynb
+.gitignore
+Failed.csv
+Failed Raw.csv
