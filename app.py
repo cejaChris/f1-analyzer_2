@@ -41,7 +41,7 @@ if 'race' not in st.session_state:
     track = 'Australian Grand Prix'
     session = 'Race'
 
-year = st.sidebar.slider('Year', 2014, 2026 + 1)
+year = st.sidebar.slider('Year', 2014, 2026)
 track = st.sidebar.selectbox('Track', get_tracks(year))
 session = st.sidebar.selectbox('Session', get_sessions(year,track))
 
