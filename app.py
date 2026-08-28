@@ -36,12 +36,12 @@ def df_format(df, x):
 st.set_page_config(layout="wide")
 
 if 'race' not in st.session_state:
-    st.session_state['race'] = f1(2026, 'Australian Grand Prix', 'Race')
-    year = 2026
-    track = 'Australian Grand Prix'
+    st.session_state['race'] = f1(2020, 'Sakhir Grand Prix', 'Race')
+    year = 2020
+    track = 'Sakhir Grand Prix'
     session = 'Race'
 
-year = st.sidebar.slider('Year', 2024, 2026)
+year = st.sidebar.slider('Year', 2019, 2026)
 track = st.sidebar.selectbox('Track', get_tracks(year))
 session = st.sidebar.selectbox('Session', get_sessions(year,track))
 
