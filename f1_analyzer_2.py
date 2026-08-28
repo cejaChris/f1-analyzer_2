@@ -1224,3 +1224,4 @@ class F1Analysis:
             return f"{total_seconds:.2f}"
         seconds = total_seconds % 60
         return f"{seconds:.2f}"
+    
