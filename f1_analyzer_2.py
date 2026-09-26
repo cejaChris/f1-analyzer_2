@@ -50,10 +50,30 @@ class F1Analysis:
         self.drivers_pace = self._pace_df()
         self.race_pace_plot = self._plot_pace_graphs_tool()
         self.race_plots = self._plot_race_stints()
+        self.tyres = self._tyres()
+        self.valid_tyres = self._valid_tyres()
+        self.tyre_deg_analysis = self._tyre_deg_analysis()
+        self.tyre_deg_plots = self._plot_tyre_deg()
 
     def _get_teams(self):
         df = self.results_df
         return df['TeamName'].drop_duplicates().to_list()
+
+    def _tyres(self):
+        return ['SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET']
+
+    def _valid_tyres(self):
+        if self.session not in ['Race', 'Sprint']:
+            return None
+        df = pd.concat(self.analyzed_stints)
+        df = df.loc[~df['TimedLapTime'].isna()]
+        used_tyres = list(df['Compound'].unique())
+        all_tyres = self.tyres
+        valid_tyres = []
+        for tyre in all_tyres:
+            if tyre  in used_tyres:
+                valid_tyres.append(tyre)
+        return valid_tyres
 
     def _get_all_drivers_names(self):
         return self.results_df['Abbreviation'].to_list()
@@ -143,6 +163,148 @@ class F1Analysis:
             if driver not in self.valid_drivers:
                 invalid_drivers.append(driver)
         return invalid_drivers
+
+    def _tyre_deg_analysis(self):
+        if self.session not in ['Race','Sprint']:
+            return None
+        analyzed_dfs = pd.concat(self.analyzed_stints)
+        deg_dfs = []
+
+        for driver in self.valid_drivers:
+            driver_df = analyzed_dfs.loc[analyzed_dfs['Driver'] == driver]
+            valid_stints = list(driver_df.loc[~driver_df['TimedLapTime'].isna()]['Stint'].unique())
+            all_stints = list(driver_df['Stint'].unique())
+            invalid_stints = []
+            for s in all_stints:
+                if s not in valid_stints:
+                    invalid_stints.append(s)
+
+            valid_df = driver_df.loc[driver_df['Stint'].isin(valid_stints)]
+            tyres = list(valid_df['Compound'].unique())
+            dfs = []
+
+            for t in tyres:
+                stint = valid_df.loc[valid_df['Compound'] == t].reset_index(drop=True)
+                stints = list(stint['Stint'].unique())
+                tyre_df = []
+                for s in stints:
+                    tyre_stint = stint.loc[stint['Stint'] == s].reset_index(drop=True)
+                    tyre_stint['TimedLapTimeFc'] = tyre_stint['TimedLapTimeFc'].interpolate(method='linear', limit_direction='forward')
+                    first_lap = tyre_stint.loc[~tyre_stint['TimedLapTimeFc'].isna()]['TimedLapTimeFc'].iloc[0]
+                    tyre_stint['Degredation'] = tyre_stint['TimedLapTimeFc'] - first_lap
+                    tyre_df.append(tyre_stint)
+
+                if len(tyre_df) > 1:
+                    tyre_df = pd.concat(tyre_df).reset_index(drop=True)
+                elif len(tyre_df) == 1:
+                    tyre_df = tyre_df[0]
+                else:
+                    continue
+
+                an_df = {
+                    'Driver': [tyre_df['Driver'].iloc[0]],
+                    'Color': [tyre_df['Color'].iloc[0]],
+                    'Team': [tyre_df['Team'].iloc[0]],
+                    'Compound':[tyre_df['Compound'].iloc[0]],
+                    'StintAmount': [len(stints)],
+                    'LapAmount':[len(tyre_df.index.to_list())],
+                    'AvgPace': [tyre_df['TimedLapTimeFc'].mean()],
+                    'AvgDeg': [tyre_df['Degredation'].mean()],
+                }
+
+                dfs.append(pd.DataFrame(an_df))
+            deg_dfs.append(pd.concat(dfs))
+
+        deg_dfs = pd.concat(deg_dfs)
+        valid_tyres = list(deg_dfs['Compound'].unique())
+        clean_tyres = []
+        all_tyres = self.tyres
+        for tyre in all_tyres:
+            if tyre in valid_tyres:
+                clean_tyres.append(tyre)
+        self.valid_drivers = clean_tyres
+
+        deg_dict = {}
+        for tyre in clean_tyres:
+            tyre_df = deg_dfs.loc[deg_dfs['Compound'] == tyre].copy()
+            fastest = tyre_df['AvgPace'].min()
+            lowest_deg = tyre_df['AvgDeg'].min()
+            tyre_df['PaceGap'] = tyre_df['AvgPace'] - fastest
+            tyre_df['DegGap'] = tyre_df['AvgDeg'] - lowest_deg
+
+            deg_dict[tyre] = tyre_df
+
+        return deg_dict
+
+    def _plot_tyre_deg(self):
+        if self.session not in ['Race', 'Sprint']:
+            return None
+        dfs = self.tyre_deg_analysis
+        plots = {}
+        tyres = list(dfs.keys())
+
+        for tyre in tyres:
+            df = dfs[tyre]
+            fig_pace = make_subplots()
+            fig_deg = make_subplots()
+
+            df = df.sort_values(by='AvgDeg').copy().reset_index(drop=True)
+            hover_text = []
+
+            for driver in list(df['Driver'].unique()):
+                driver_df = df.loc[df['Driver'] == driver].copy()
+
+                text = (
+                    f'Driver: {driver_df['Driver'].iloc[0]} | Pace: {self.convert_seconds_to_s_ms_short(driver_df['AvgPace'].iloc[0])}<br>'
+                    f'Stints: {driver_df['StintAmount'].iloc[0]} | Total Laps:{driver_df['LapAmount'].iloc[0]}<br>'
+                    f'Average Deg per Lap: {driver_df['AvgDeg'].iloc[0]:.3f}'
+                )
+                hover_text.append(text)
+
+            fig_deg.add_trace(go.Bar(
+                x=df['Driver'],
+                y=df['AvgDeg'],
+                marker_color=df['Color'],
+                hovertext=hover_text,
+                textposition='none',
+                hoverinfo='text'
+            ))
+            fig_deg.update_layout(
+                template='plotly_dark',
+                width=1200, height=680,
+            )
+
+            df = df.sort_values(by='AvgPace', ascending=False).copy().reset_index(drop=True)
+            hover_text = []
+
+            for driver in list(df['Driver'].unique()):
+                driver_df = df.loc[df['Driver'] == driver].copy()
+
+                text = (
+                    f'Driver: {driver_df['Driver'].iloc[0]} | Pace: {self.convert_seconds_to_s_ms_short(driver_df['AvgPace'].iloc[0])}<br>'
+                    f'Stints: {driver_df['StintAmount'].iloc[0]} | Total Laps:{driver_df['LapAmount'].iloc[0]}<br>'
+                    f'Average Deg per Lap: {driver_df['AvgDeg'].iloc[0]:.3f}'
+                )
+                hover_text.append(text)
+
+            fig_pace.add_trace(go.Bar(
+                x=df['AvgPace'],
+                y=df['Driver'],
+                marker_color=df['Color'],
+                orientation='h',
+                hovertext=hover_text,
+                textposition='none',
+                hoverinfo='text'
+            ))
+            fig_pace.update_layout(
+                template='plotly_dark',
+                width=1200, height=680,
+                xaxis_range=[df['AvgPace'].min() * .995 , df[f'AvgPace'].max() * 1.005]
+            )
+
+
+            plots[tyre] = [fig_pace, fig_deg]
+        return plots
 
     def _clean_results(self):
         if self.session in ['Race', 'Sprint']:

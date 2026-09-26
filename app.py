@@ -57,7 +57,7 @@ if 'race' in st.session_state:
     session = race.session
 
     st.header(f'{race.year} {race.track} {race.session}', text_alignment='center')
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2, border=True)
     col1.header('Results', text_alignment='center')
     df_format(race.clean_results, col1)
     col2.header(f'Weather Conditions', text_alignment='center')
@@ -65,7 +65,7 @@ if 'race' in st.session_state:
     col2.plotly_chart(race.weather_plot)
 
     if race.session in ['Race','Sprint']:
-        laps_1, laps_2 = st.columns(2)
+        laps_1, laps_2 = st.columns(2, border=True)
 
         laps_1.plotly_chart(race.strategies_plot)
         laps_2.plotly_chart(race.positions_plot)
@@ -91,18 +91,29 @@ if 'race' in st.session_state:
         st.text('Speed Trap')
         st.plotly_chart(race.race_plots[-1])
 
-        st.session_state['r_sector_1'], st.session_state['r_sector_2'], st.session_state['r_sector_3'] = st.columns(3)
+        st.session_state['r_sector_1'], st.session_state['r_sector_2'], st.session_state['r_sector_3'] = st.columns(3, border=True)
 
         for s, p in zip([1,2,3], [6,7,8]):
             st.session_state[f'r_sector_{s}'].text(f'Sector {s}')
             st.session_state[f'r_sector_{s}'].plotly_chart(race.race_plots[p])
+        if 'tyre_deg_plots' not in st.session_state:
+            st.session_state['tyre_deg_plots'] = race.tyre_deg_plots
+        for tyre in list(st.session_state['tyre_deg_plots'].keys()):
+            plots = st.session_state['tyre_deg_plots'][tyre]
+            st.header(f'{tyre} Degredation',text_alignment='center')
+            tyre_1, tyre_2 = st.columns(2, border=True)
+            tyre_1.text('Pace')
+            tyre_1.plotly_chart(plots[0])
+            tyre_2.text('Deg Per Lap')
+            tyre_2.plotly_chart(plots[1])
+        
 
     else:
         for qs in ['Q1', 'Q2', 'Q3']:
             st.header(f'{qs} Analysis', text_alignment='center')
 
-            st.session_state[f'{qs}_1'],st.session_state[f'{qs}_2'] = st.columns(2)
-            st.session_state[f'{qs}_3'],st.session_state[f'{qs}_4'], st.session_state[f'{qs}_5'] = st.columns(3)
+            st.session_state[f'{qs}_1'],st.session_state[f'{qs}_2'] = st.columns(2, border=True)
+            st.session_state[f'{qs}_3'],st.session_state[f'{qs}_4'], st.session_state[f'{qs}_5'] = st.columns(3, border=True)
            
 
             for n, p in zip([1,2], ['Lap Time', 'Speed Trap']):
