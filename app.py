@@ -96,10 +96,9 @@ if 'race' in st.session_state:
         for s, p in zip([1,2,3], [6,7,8]):
             st.session_state[f'r_sector_{s}'].text(f'Sector {s}')
             st.session_state[f'r_sector_{s}'].plotly_chart(race.race_plots[p])
-        if 'tyre_deg_plots' not in st.session_state:
-            st.session_state['tyre_deg_plots'] = race.tyre_deg_plots
-        for tyre in list(st.session_state['tyre_deg_plots'].keys()):
-            plots = st.session_state['tyre_deg_plots'][tyre]
+
+        for tyre in list(race.tyre_deg_plots.keys()):
+            plots = race.tyre_deg_plots[tyre]
             st.header(f'{tyre} Degredation',text_alignment='center')
             tyre_1, tyre_2 = st.columns(2, border=True)
             tyre_1.text('Pace')
