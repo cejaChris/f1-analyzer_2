@@ -1185,7 +1185,13 @@ class F1Analysis:
 
                         fig.update_layout(
                             showlegend=True,
-                            legend=dict(orientation='h'),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                # y=1.02, # Positive values push it above the plot
+                                xanchor="center",
+                                x=0.5
+                            ),
                             yaxis=dict(tickformat='.1f'),
                             template='plotly_dark', 
                             margin=dict(l=5, r=5, t=30, b=40), 
@@ -1232,7 +1238,12 @@ class F1Analysis:
 
                         fig_fc.update_layout(
                             showlegend=True,
-                            legend=dict(orientation='h'),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                # y=1.02, # Positive values push it above the plot
+                                xanchor="center",
+                                x=0.5),
                             yaxis=dict(tickformat='.1f'),
                             template='plotly_dark', 
                             margin=dict(l=5, r=5, t=30, b=40), 
