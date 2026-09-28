@@ -1142,18 +1142,21 @@ class F1Analysis:
         fig_s3 = make_subplots()
         fig_st = make_subplots()
 
-        laps = pd.concat(self.analyzed_stints).reset_index(drop=True)
+        laps = pd.concat(self.analyzed_stints)
+        laps = laps.loc[laps['PitInTime'].isna() & laps['PitOutTime'].isna()].copy().reset_index(drop=True)
+        
         pace = self.drivers_pace.copy()
 
         for driver in self.drivers:
             try:
                 driver_laps = laps.loc[laps['Driver'] == driver].reset_index(drop=True)
+                driver_laps = driver_laps.loc[driver_laps['TrackStatus'].str.contains('4|5|6') == False].copy().reset_index(drop=True)
                 driver_pace = pace.loc[pace['Driver'] == driver].reset_index(drop=True)
                 driver_name = driver
 
                 template = []
 
-                for laptime, timed_lap_time in zip(['LapTime', 'LapTimeFc'],['TimedLapTime','TimedLapTimeFc']):
+                for fig_l, fig_v, laptime, timed_lap_time in zip([fig, fig_fc], [fig_violin, fig_fc_violin],['LapTime', 'LapTimeFc'],['TimedLapTime','TimedLapTimeFc']):
 
                     for x in driver_laps.index:
                         try:
@@ -1169,110 +1172,60 @@ class F1Analysis:
                             f"Tyre: {driver_laps.loc[x, 'Compound'][0]} ({(age)})"
                         )
                         template.append(text)
-                    if laptime == 'LapTime':   
-                        fig.add_trace(go.Scatter(
-                            x=driver_laps['LapNumber'], y=driver_laps[laptime],
-                            name=driver_name,
-                            hovertext=template,
-                            mode='lines+markers',
-                            marker=dict(color=driver_pace['Color'].item()),
-                            line=dict(
-                                color=driver_pace['Color'].item(),
-                                dash=self.driver_line_type[driver]
-                            ),
-                            hoverinfo='text'  
-                        ))       
+                      
+                    fig_l.add_trace(go.Scatter(
+                        x=driver_laps['LapNumber'], y=driver_laps[laptime],
+                        name=driver_name,
+                        hovertext=template,
+                        mode='lines+markers',
+                        marker=dict(color=driver_pace['Color'].item()),
+                        line=dict(
+                            color=driver_pace['Color'].item(),
+                            dash=self.driver_line_type[driver]
+                        ),
+                        hoverinfo='text'  
+                    ))       
 
-                        fig.update_layout(
-                            showlegend=True,
-                            legend=dict(
-                                orientation="h",
-                                yanchor="bottom",
-                                # y=1.02, # Positive values push it above the plot
-                                xanchor="center",
-                                x=0.5
-                            ),
-                            yaxis=dict(tickformat='.1f'),
-                            template='plotly_dark', 
-                            margin=dict(l=5, r=5, t=30, b=40), 
-                            width=1200, height=680, 
-                        )
+                    fig_l.update_layout(
+                        showlegend=True,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            # y=1.02, # Positive values push it above the plot
+                            xanchor="center",
+                            x=0.5
+                        ),
+                        yaxis=dict(tickformat='.1f'),
+                        template='plotly_dark', 
+                        margin=dict(l=5, r=5, t=30, b=40), 
+                        width=1200, height=680, 
+                    )
 
-                        driver_name_v = (
-                            f'{driver}<br>'
-                            f'+{driver_pace['GapS'].item():.2f}<br>'
-                            f'{driver_pace['Strat'].item()}'
-                        )
+                    driver_name_v = (
+                        f'{driver}<br>'
+                        f'+{driver_pace['GapS'].item():.2f}<br>'
+                        f'{driver_pace['Strat'].item()}'
+                    )
 
-                        fig_violin.add_trace(go.Violin(
-                            y=driver_laps[timed_lap_time],
-                            name=driver_name_v,
-                            box_visible=True,
-                            meanline_visible=True,
-                            opacity=0.6,
-                            fillcolor=driver_pace['Color'].item(),
-                            line_color='white',
-                        ))
+                    fig_v.add_trace(go.Violin(
+                        y=driver_laps[timed_lap_time],
+                        name=driver_name_v,
+                        box_visible=True,
+                        meanline_visible=True,
+                        opacity=0.6,
+                        fillcolor=driver_pace['Color'].item(),
+                        line_color='white',
+                    ))
 
-                        fig_violin.update_layout(
-                            showlegend=False, 
-                            yaxis=dict(tickformat='.2f'),
-                            xaxis=dict(tickformat=','),
-                            template='plotly_dark',  
-                            margin=dict(l=5, r=5, t=30, b=40), 
-                            width=1200, height=680, 
-                        )
-                    else:
-                        fig_fc.add_trace(go.Scatter(
-                            x=driver_laps['LapNumber'], y=driver_laps[laptime],
-                            name=driver_name,
-                            hovertext=template,
-                            mode='lines+markers',
-                            marker=dict(color=driver_pace['Color'].item()),
-                            line=dict(
-                                color=driver_pace['Color'].item(),
-                                dash=self.driver_line_type[driver]
-                            ),
-                            hoverinfo='text'  
-                        ))       
-
-                        fig_fc.update_layout(
-                            showlegend=True,
-                            legend=dict(
-                                orientation="h",
-                                yanchor="bottom",
-                                # y=1.02, # Positive values push it above the plot
-                                xanchor="center",
-                                x=0.5),
-                            yaxis=dict(tickformat='.1f'),
-                            template='plotly_dark', 
-                            margin=dict(l=5, r=5, t=30, b=40), 
-                            width=1200, height=680, 
-                        )
-                        driver_name_v = (
-                            f'{driver}<br>'
-                            f'+{driver_pace['GapFcS'].item():.2f}<br>'
-                            f'{driver_pace['Strat'].item()}'
-                        )
-
-                        fig_fc_violin.add_trace(go.Violin(
-                            y=driver_laps[timed_lap_time],
-                            name=driver_name_v,
-                            box_visible=True,
-                            meanline_visible=True,
-                            opacity=0.6,
-                            fillcolor=driver_pace['Color'].item(),
-                            line_color='white',
-                        ))
-
-                        fig_fc_violin.update_layout(
-                            showlegend=False, 
-                            yaxis=dict(tickformat='.2f'),
-                            xaxis=dict(tickformat=','),
-                            template='plotly_dark',  
-                            margin=dict(l=5, r=5, t=30, b=40), 
-                            width=1200, height=680, 
-                        )
+                    fig_v.update_layout(
+                        showlegend=False, 
+                        yaxis=dict(tickformat='.2f'),
+                        xaxis=dict(tickformat=','),
+                        template='plotly_dark',  
+                        margin=dict(l=5, r=5, t=30, b=40), 
+                        width=1200, height=680, 
+                    )
+                    
             except:
                 continue
 
@@ -1369,7 +1322,16 @@ class F1Analysis:
             width=1200, height=680,
             xaxis_range=[df[f'AvgST'].min() - .25 , df[f'AvgST'].max() + .25]
         )
+        for fig_l, lap in zip([fig, fig_fc], ['TimedLapTime', 'TimedLapTimeFc']):
+            first_lap = laps.loc[laps['TrackStatus'].str.contains('4|5|6') == False]['LapNumber'].min()
+            last_lap = laps['LapNumber'].max()
 
+            slowest_lap = laps[lap].max() + 1
+            fastest_lap = laps[lap].min() - 1
+
+            fig_l.update_xaxes(range=[first_lap, last_lap])
+            fig_l.update_yaxes(range=[fastest_lap, slowest_lap])
+            
         return [fig, fig_pace, fig_violin, fig_fc, fig_fc_pace, fig_fc_violin, fig_s1, fig_s2, fig_s3, fig_st]
 
     @staticmethod
