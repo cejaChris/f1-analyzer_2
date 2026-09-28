@@ -1150,8 +1150,8 @@ class F1Analysis:
         for driver in self.drivers:
             try:
                 driver_laps = laps.loc[laps['Driver'] == driver].reset_index(drop=True)
-                driver_laps = driver_laps.loc[driver_laps['TrackStatus'].str.contains('4|5|6') == False].copy().reset_index(drop=True)
                 driver_pace = pace.loc[pace['Driver'] == driver].reset_index(drop=True)
+
                 driver_name = driver
 
                 template = []
@@ -1172,7 +1172,10 @@ class F1Analysis:
                             f"Tyre: {driver_laps.loc[x, 'Compound'][0]} ({(age)})"
                         )
                         template.append(text)
-                      
+                    
+                    driver_laps.loc[driver_laps['TrackStatus'].str.contains('4|5|6')][laptime] = pd.NA
+                    driver_laps.loc[(driver_laps['PitInTime'].isna() == False) | (driver_laps['PitOutTime'].isna() == False)][laptime] = pd.NA
+                    
                     fig_l.add_trace(go.Scatter(
                         x=driver_laps['LapNumber'], y=driver_laps[laptime],
                         name=driver_name,
