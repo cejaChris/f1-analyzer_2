@@ -408,6 +408,12 @@ class F1Analysis:
         stints_dfs = []
         stints_summaries = []
 
+        def get_tyre_color(compound):
+            if compound not in list(self.tyre_colors):
+                return '#000000'
+            else:
+                return self.tyre_colors[compound]
+
         for df in analyzed_dfs:
             stints = df['Stint'].drop_duplicates().to_list()
 
@@ -429,7 +435,7 @@ class F1Analysis:
                 'StintLength': [df['LapNumber'].iloc[-1] - df['LapNumber'].iloc[0]],
                 'Compound': [df['Compound'].iloc[0]],
                 'FreshTyre': [df['FreshTyre'].iloc[0]],
-                'Color': [self.tyre_colors[df['Compound'].iloc[0]]],
+                'Color': [get_tyre_color(df['Compound'].iloc[0])],
                 'Length+1': [(df['LapNumber'].iloc[-1] - df['LapNumber'].iloc[0]) + 1]
             }
 

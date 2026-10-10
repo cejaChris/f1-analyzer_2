@@ -86,7 +86,7 @@
 84,4,Italy,Imola,Emilia Romagna Grand Prix,Practice 1,Qualifying,Practice 2,Sprint,Race,2022,1077,63
 85,5,United States,Miami,Miami Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1078,57
 86,6,Spain,Barcelona,Spanish Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1079,66
-87,7,Monaco,Monaco,Monaco Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,,2022,1080,64
+87,7,Monaco,Monaco,Monaco Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1080,64
 88,8,Azerbaijan,Baku,Azerbaijan Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1081,51
 89,9,Canada,Montréal,Canadian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1082,70
 90,10,Great Britain,Silverstone,British Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2022,1083,52
@@ -187,3 +187,4 @@
 185,13,Italy,Monza,Italian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2026,1181,53
 186,14,Spain,Madrid,Spanish Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2026,1182,57
 187,15,Azerbaijan,Baku,Azerbaijan Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2026,1183,51
+188,16,Malaysia,Sepang,Bahrain Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2026,1184,56

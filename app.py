@@ -3,6 +3,10 @@ import pandas as pd
 import streamlit as st
 
 # streamlit run app.py
+def get_events():
+    df = pd.read_csv('./events/events.csv')
+    df = df.loc[df['Complete'] == True].copy()
+    return df
 
 def df_format(df, x):
     x.dataframe(
@@ -12,11 +16,11 @@ def df_format(df, x):
         )
     
 def get_tracks(year):
-    df = pd.read_csv('./events/finished.csv')
+    df = events.copy()
     return df[df['Year'] == year]['EventName'].to_list()
 
 def get_sessions(year, track):
-    df = pd.read_csv('./events/finished.csv')
+    df = events.copy()
     df = df[df['Year'] == year]
     df = df[df['EventName'] == track].reset_index(drop=True)
     df_list = []
@@ -32,6 +36,8 @@ def df_format(df, x):
             hide_index=True, height='content', width='stretch',
             column_config={col: st.column_config.Column(alignment='center') for col in df.columns},
         )
+
+events = get_events()
 
 st.set_page_config(layout="wide")
 
