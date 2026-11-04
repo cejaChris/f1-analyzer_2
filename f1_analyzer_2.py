@@ -12,7 +12,7 @@ class F1Analysis:
         self.year = year
         self.track = track
         self.session = session
-        self.results_df = pd.read_parquet(f'./data/{year}_{track}_{session}_results.parquet'.lower().replace(' ',''))
+        self.results_df = self._get_results()
         self.laps_df = pd.read_parquet(f'./data/{year}_{track}_{session}_laps.parquet'.lower().replace(' ',''))
         self.weather_df = pd.read_parquet(f'./data/{year}_{track}_{session}_weather.parquet'.lower().replace(' ',''))
         self.clean_results = self._clean_results()
@@ -54,6 +54,16 @@ class F1Analysis:
         self.valid_tyres = self._valid_tyres()
         self.tyre_deg_analysis = self._tyre_deg_analysis()
         self.tyre_deg_plots = self._plot_tyre_deg()
+
+    def _get_results(self):
+        raw_df = pd.read_parquet(f'./data/{self.year}_{self.track}_{self.session}_results.parquet'.lower().replace(' ',''))
+        def color_checker(color):
+            if color in [None, 'None', '#None']:
+                return '4c4c4c'
+            else:
+                return color
+        raw_df['TeamColor'] = raw_df['TeamColor'].apply(color_checker)
+        return raw_df
 
     def _get_teams(self):
         df = self.results_df
@@ -106,7 +116,7 @@ class F1Analysis:
             return 105
 
     def _get_race_distance(self):
-        df = pd.read_csv('./events/schedule.csv').reset_index(drop=True)
+        df = pd.read_csv('./events/events.csv').reset_index(drop=True)
         df = df[df['Year'] == self.year]
         df = df[df['EventName'] == self.track]
         return df['Laps'].item()
