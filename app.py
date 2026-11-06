@@ -160,7 +160,6 @@ if 'race' in st.session_state:
                     st.session_state[f'{qs}_{n}'].text(p, text_alignment='center')
                     st.session_state[f'{qs}_{n}'].plotly_chart(race.quali_plots[qs][n - 1])
 
-                st.header('Personal Best Sectors', text_alignment='center')
                 for n, p in zip([3,4,5], ['Sector 1', 'Sector 2', 'Sector 3']):
                     st.session_state[f'{qs}_{n}'].text(p, text_alignment='center')
                     st.session_state[f'{qs}_{n}'].plotly_chart(race.quali_plots[qs][n - 1])
