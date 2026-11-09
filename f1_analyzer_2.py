@@ -1170,13 +1170,13 @@ class F1Analysis:
 
                 template = []
 
-                for fig_l, fig_v, laptime, timed_lap_time in zip([fig, fig_fc], [fig_violin, fig_fc_violin],['LapTime', 'LapTimeFc'],['TimedLapTime','TimedLapTimeFc']):
+                for fig_l, fig_v, laptime, timed_lap_time, gap in zip([fig, fig_fc], [fig_violin, fig_fc_violin],['LapTime', 'LapTimeFc'],['TimedLapTime','TimedLapTimeFc'], ['GapS','GapFcS']):
 
                     for x in driver_laps.index:
                         try:
                             lap = int(driver_laps.loc[x, 'LapNumber'])
                             age = int(driver_laps.loc[x, 'TyreLife'])
-                        except:
+                        except: 
                             lap = driver_laps.loc[x, 'LapNumber']
                             age = driver_laps.loc[x, 'TyreLife']
 
@@ -1220,7 +1220,7 @@ class F1Analysis:
 
                     driver_name_v = (
                         f'{driver}<br>'
-                        f'+{driver_pace['GapS'].item():.2f}<br>'
+                        f'+{driver_pace[gap].item():.2f}<br>'
                         f'{driver_pace['Strat'].item()}'
                     )
 
