@@ -66,7 +66,7 @@ if 'race' in st.session_state:
     if race.session in ['Race','Sprint']:
         st.header(f'{race.year} {race.track}', text_alignment='center')
         sum_col_1, sum_col_2, sum_col_3 = st.columns([1,1,9])
-        select = sum_col_1.selectbox('', ['Summary', 'Strategies', 'Lap Times', 'Sector Times & Speed Trap','Tyre Performance'])
+        select = sum_col_1.selectbox('Select', ['Summary', 'Strategies', 'Lap Times', 'Sector Times & Speed Trap','Tyre Performance'], label_visibility='hidden')
 
         if select == 'Summary':
             
@@ -87,7 +87,7 @@ if 'race' in st.session_state:
             laps_2.plotly_chart(race.positions_plot)
         
         if select == 'Lap Times':
-            lap_type = sum_col_2.selectbox('',['Clean', 'Fuel Corrected'], index=0)
+            lap_type = sum_col_2.selectbox('Select',['Clean', 'Fuel Corrected'], index=0, label_visibility='hidden')
         
             if lap_type == 'Clean':
                 st.header('Lap Times', text_alignment='center')
@@ -138,7 +138,7 @@ if 'race' in st.session_state:
     else:
         st.header(f'{race.year} {race.track} {race.session}', text_alignment='center')
         sum_col_1, sum_col_2, sum_col_3 = st.columns([1,1,9])
-        select = sum_col_1.selectbox('', ['Summary', 'Q1', 'Q2', 'Q3'], index=0)
+        select = sum_col_1.selectbox('Select', ['Summary', 'Q1', 'Q2', 'Q3'], index=0, label_visibility='hidden')
 
         if select == 'Summary':
             col1, col2 = st.columns(2, border=True)

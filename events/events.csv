@@ -69,7 +69,7 @@
 67,9,Austria,Spielberg,Austrian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2021,1060,71,True
 68,10,Great Britain,Silverstone,British Grand Prix,Practice 1,Qualifying,Practice 2,Sprint,Race,2021,1061,52,True
 69,11,Hungary,Budapest,Hungarian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2021,1062,70,True
-70,12,Belgium,Spa-Francorchamps,Belgian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,,2021,1063,1,True
+70,12,Belgium,Spa-Francorchamps,Belgian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,,2021,1063,44,True
 71,13,Netherlands,Zandvoort,Dutch Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2021,1064,72,True
 72,14,Italy,Monza,Italian Grand Prix,Practice 1,Qualifying,Practice 2,Sprint,Race,2021,1065,53,True
 73,15,Russia,Sochi,Russian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2021,1066,53,True
@@ -146,7 +146,7 @@
 144,20,Mexico,Mexico City,Mexico City Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2024,1140,71,True
 145,21,Brazil,São Paulo,São Paulo Grand Prix,Practice 1,Sprint Qualifying,Sprint,Qualifying,Race,2024,1141,69,True
 146,22,United States,Las Vegas,Las Vegas Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2024,1142,50,True
-147,23,Qatar,Lusail,Qatar Grand Prix,Practice 1,Sprint Qualifying,Sprint,Qualifying,Race,2024,1143,57,True
+147,23,Qatar,Lusail,Qatar Grand Prix,Practice 1,Sprint Qualifying,,Qualifying,Race,2024,1143,57,True
 148,24,United Arab Emirates,Yas Island,Abu Dhabi Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2024,1144,58,True
 149,1,Australia,Melbourne,Australian Grand Prix,Practice 1,Practice 2,Practice 3,Qualifying,Race,2025,1145,57,True
 150,2,China,Shanghai,Chinese Grand Prix,Practice 1,Sprint Qualifying,Sprint,Qualifying,Race,2025,1146,56,True

@@ -141,10 +141,7 @@ class F1Analysis:
 
     def _get_valid_drivers(self):
         if self.session in ['Race', 'Sprint']:
-            if self.session == 'Sprint':
-                distance = self.sprint_distance
-            else:
-                distance = self.race_distance
+            distance = self.results_df['Laps'].max()
             valid_drivers = []
             laps_min = distance * .75
             df = self.results_df
@@ -179,8 +176,15 @@ class F1Analysis:
         deg_dfs = []
 
         for driver in self.valid_drivers:
-            driver_df = analyzed_dfs.loc[analyzed_dfs['Driver'] == driver]
-            valid_stints = list(driver_df.loc[~driver_df['TimedLapTime'].isna()]['Stint'].unique())
+            driver_df = analyzed_dfs.loc[analyzed_dfs['Driver'] == driver].reset_index(drop=True).copy()
+            valid_stints = []
+            for s in list(driver_df['Stint'].unique()):
+                stint_df = driver_df.loc[driver_df['Stint'] == s].reset_index(drop=True).copy()
+                stint_df = stint_df.loc[~stint_df['TimedLapTime'].isna()].copy()
+                if len(list(stint_df.index)) > 2:
+                    valid_stints.append(s)
+                    
+                
             all_stints = list(driver_df['Stint'].unique())
             invalid_stints = []
             for s in all_stints:
@@ -221,7 +225,10 @@ class F1Analysis:
                 }
 
                 dfs.append(pd.DataFrame(an_df))
-            deg_dfs.append(pd.concat(dfs))
+            try:
+                deg_dfs.append(pd.concat(dfs))
+            except:
+                print(f'{driver}_{s}')
 
         deg_dfs = pd.concat(deg_dfs)
         valid_tyres = list(deg_dfs['Compound'].unique())
@@ -567,23 +574,26 @@ class F1Analysis:
             
 
             for driver in drivers:
-                df = qual_s[qual_s['Abbreviation'] == driver].reset_index(drop=True)
-                driver_lap_time = df[session].iloc[0]
+                try:
+                    df = qual_s[qual_s['Abbreviation'] == driver].reset_index(drop=True)
+                    driver_lap_time = df[session].iloc[0]
 
-                driver_laps = self.laps_df.loc[self.laps_df['Driver'] == driver]
-                driver_lap = driver_laps[driver_laps['LapTime'] == driver_lap_time].reset_index(drop=True)
-                lap_number = driver_lap['LapNumber'].iloc[0].item()
-                
-                data_df = driver_laps.loc[driver_laps['LapNumber'] == lap_number][['Driver', 'LapTime','Sector1Time','Sector2Time','Sector3Time', 'SpeedST']].reset_index(drop=True)
+                    driver_laps = self.laps_df.loc[self.laps_df['Driver'] == driver]
+                    driver_lap = driver_laps[driver_laps['LapTime'] == driver_lap_time].reset_index(drop=True)
+                    lap_number = driver_lap['LapNumber'].iloc[0]
+                    
+                    data_df = driver_laps.loc[driver_laps['LapNumber'] == lap_number][['Driver', 'LapTime','Sector1Time','Sector2Time','Sector3Time', 'SpeedST']].reset_index(drop=True)
 
-                data_df['LapTime'] = data_df['LapTime'].dt.total_seconds()
-                data_df['Sector1Time'] = data_df['Sector1Time'].dt.total_seconds()
-                data_df['Sector2Time'] = data_df['Sector2Time'].dt.total_seconds()
-                data_df['Sector3Time'] = data_df['Sector3Time'].dt.total_seconds()
-                
-                data_df.loc[0,'Color'] = f'#{self.results_df.loc[self.results_df['Abbreviation'] == driver]['TeamColor'].item()}'
+                    data_df['LapTime'] = data_df['LapTime'].dt.total_seconds()
+                    data_df['Sector1Time'] = data_df['Sector1Time'].dt.total_seconds()
+                    data_df['Sector2Time'] = data_df['Sector2Time'].dt.total_seconds()
+                    data_df['Sector3Time'] = data_df['Sector3Time'].dt.total_seconds()
+                    
+                    data_df.loc[0,'Color'] = f'#{self.results_df.loc[self.results_df['Abbreviation'] == driver]['TeamColor'].item()}'
 
-                quali_analysis[session].append(data_df)
+                    quali_analysis[session].append(data_df)
+                except:
+                    continue
 
         for q in ['Q1', 'Q2', 'Q3']:
                 quali_analysis[q] = pd.concat(quali_analysis[q]).reset_index(drop=True)
@@ -900,8 +910,13 @@ class F1Analysis:
             strat_acronyms = []
 
             for s in strat:
-                strat_df = driver_df.loc[driver_df['Stint'] == s]
-                compound = strat_df['Compound'].iloc[0]
+                strat_df = driver_df.loc[driver_df['Stint'] == s].reset_index(drop=True)
+                try:
+                    compound = strat_df['Compound'].iloc[0]
+                    
+                except:
+                    print(f'{driver}_{s}')
+                    compound = strat_df['Compound'].item()
                 strat_acronyms.append(compound[0])
 
             strat_str = f'{strat_acronyms[0]}'
@@ -1187,8 +1202,8 @@ class F1Analysis:
                         )
                         template.append(text)
                     
-                    driver_laps.loc[driver_laps['TrackStatus'].str.contains('4|5|6')][laptime] = pd.NA
-                    driver_laps.loc[(driver_laps['PitInTime'].isna() == False) | (driver_laps['PitOutTime'].isna() == False)][laptime] = pd.NA
+                    driver_laps.loc[driver_laps['TrackStatus'].str.contains('4|5|6'), laptime] = pd.NA
+                    driver_laps.loc[(driver_laps['PitInTime'].isna() == False) | (driver_laps['PitOutTime'].isna() == False), laptime] = pd.NA
                     
                     fig_l.add_trace(go.Scatter(
                         x=driver_laps['LapNumber'], y=driver_laps[laptime],
