@@ -2,8 +2,6 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
-import numpy as np
-
 
 class F1Analysis:
     def __init__(self, year, track, session):
@@ -20,26 +18,14 @@ class F1Analysis:
         self.tyre_colors = self._tyre_colors()
         self.weather_data = self._get_weather_data()
         self.weather_plot = self._plot_weather()
-        
-        # self.location = self.session.session_info['Meeting']['Location']
-        # self.type_2 = self.session.session_info['Type']
         self.drivers = self._get_all_drivers_names()
         self.valid_drivers = self._get_valid_drivers()
         self.invalid_drivers = self._get_invalid_drivers()
-        # self.results = self._get_results_clean()[1]
-        # self.results_raw = self._get_results_clean()[0]
-        # self.lead_drivers = self._get_lead_driver()
         self.time_loss = self._get_time_loss_per_kg()
-        # self.title = self._get_session_title()
-        # self.type = self._get_session_type()
         self.fuel_capacity = self._get_fuel_capacity()
-        # self.location = self._get_location()
         self.avg_fuel_usage = self._get_avg_fuel_usage()
         self.time_loss_per_lap = self._fuel_time_loss_per_lap()
         self.driver_line_type = self._driver_line_type()
-        # self.top_ten_lap_details = self._get_top_ten_laps_details()
-        # self.tyre_deg = self._calc_tyre_deg()
-        # self.weather_data = self._get_weather_data()
         self.analyzed_stints = self._analyze_race_stints()
         self.quali_analysis = self._quali_session_analysis()
         self.quali_plots = self._plot_quali_analysis()
@@ -228,7 +214,8 @@ class F1Analysis:
             try:
                 deg_dfs.append(pd.concat(dfs))
             except:
-                print(f'{driver}_{s}')
+                continue
+
 
         deg_dfs = pd.concat(deg_dfs)
         valid_tyres = list(deg_dfs['Compound'].unique())
@@ -381,17 +368,6 @@ class F1Analysis:
             driver_laps['TimedLapTimeFc'] = driver_laps['TimedLapTime'] - driver_laps['TimeLoss']
 
             driver_laps = driver_laps.drop(columns=['Roll', 'Roll2', 'Diff'])
-            
-                # if not driver_laps.loc[x, 'IsAccurate']:
-                #     driver_laps.loc[x,'TimedLapTime'] = pd.NA
-                # if driver_laps.loc[x, 'TrackStatus'] != '1':
-                #     driver_laps.loc[x, 'TimedLapTime'] = pd.NA
-                # if driver_laps.loc[x,'LapNumber'] == 1 or driver_laps.loc[x,'LapNumber'] == 2:
-                #     driver_laps.loc[x,'TimedLapTime'] = pd.NA
-                # if driver_laps.loc[x,'Deleted']:
-                #     driver_laps.loc[x,'TimedLapTime'] = pd.NA
-                # if driver_laps.loc[x,'TimedLapTime']  - driver_laps['TimedLapTime'].mean() > 2:
-                #     driver_laps.loc[x,'TimedLapTime'] = pd.NA
             
             analyzed_dfs.append(driver_laps)
         return analyzed_dfs
